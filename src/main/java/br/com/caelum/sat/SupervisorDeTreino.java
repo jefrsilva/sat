@@ -1,4 +1,4 @@
-package sat;
+package br.com.caelum.sat;
 
 import static org.bytedeco.javacpp.opencv_core.*;
 import static org.bytedeco.javacpp.opencv_imgproc.*;
@@ -28,9 +28,11 @@ import org.bytedeco.javacpp.opencv_objdetect;
 import org.bytedeco.javacpp.opencv_objdetect.CascadeClassifier;
 import org.bytedeco.javacpp.opencv_video.BackgroundSubtractor;
 import org.bytedeco.javacv.CanvasFrame;
-import org.bytedeco.javacv.FrameGrabber;
-import org.bytedeco.javacv.FrameGrabber.Exception;
 import org.bytedeco.javacv.OpenCVFrameConverter;
+
+import br.com.caelum.sat.filtro.GrayscaleFiltro;
+import br.com.caelum.sat.filtro.ResizeFiltro;
+import br.com.caelum.sat.filtro.WebCamFonte;
 
 public class SupervisorDeTreino {
 
@@ -58,8 +60,10 @@ public class SupervisorDeTreino {
 		CvMemStorage mem = CvMemStorage.create();
 		OpenCVFrameConverter.ToIplImage conversor = new OpenCVFrameConverter.ToIplImage();
 
-		String pathFrontalFace = this.getClass().getClassLoader()
-				.getResource("haarcascades/haarcascade_frontalface_alt2.xml")
+		String pathFrontalFace = this
+				.getClass()
+				.getClassLoader()
+				.getResource("haarcascades/haarcascade_frontalface_default.xml")
 				.getPath();
 		CascadeClassifier classificadorFrente = new CascadeClassifier(
 				pathFrontalFace);
@@ -70,99 +74,88 @@ public class SupervisorDeTreino {
 		CascadeClassifier classificadorPerfil = new CascadeClassifier(
 				pathProfileFace);
 
-		try {
-			FrameGrabber webcam = FrameGrabber.createDefault(0);
-			webcam.start();
-			IplImage quadro = conversor.convert(webcam.grab());
+		WebCamFonte webcam = new WebCamFonte();
 
-			double gamma = CanvasFrame.getDefaultGamma() / webcam.getGamma();
-			janela = criaJanela("Webcam", gamma, 1.0);
-			janelaDebug = criaJanela("Debug", 1.0, 1.0);
-			janelaDebug.setBounds((int) LARGURA_JANELA, 0, janela.getWidth(),
-					janela.getHeight());
+		double gamma = CanvasFrame.getDefaultGamma() / webcam.getGamma();
+		janela = criaJanela("Webcam", gamma, 1.0);
+		janelaDebug = criaJanela("Debug", 1.0, 1.0);
+		janelaDebug.setBounds((int) LARGURA_JANELA, 0, janela.getWidth(),
+				janela.getHeight());
 
-			double fatorDeEscala = LARGURA_JANELA / quadro.width();
-			int width = (int) (quadro.width() * fatorDeEscala);
-			int height = (int) (quadro.height() * fatorDeEscala);
+		double fatorDeEscala = LARGURA_JANELA / webcam.getWidth();
+		int width = (int) (webcam.getWidth() * fatorDeEscala);
+		int height = (int) (webcam.getHeight() * fatorDeEscala);
+		
+		ResizeFiltro filtroResize = new ResizeFiltro(width, height);
+		webcam.conecta(filtroResize);
+		
+		GrayscaleFiltro filtroGrayscale = new GrayscaleFiltro();
+		filtroResize.conecta(filtroGrayscale);
 
-			IplImage quadroReduzido = IplImage.create(width, height,
-					quadro.depth(), quadro.nChannels());
-			IplImage quadroCinza = IplImage.create(width, height,
-					quadro.depth(), 1);
+		IplImage quadroCinza = IplImage.create(width, height, webcam.getOutput().depth(), 1);
 
-			Mat quadroFG = cvarrToMat(quadroReduzido.clone());
-			BackgroundSubtractor extratorDeFundo = createBackgroundSubtractorMOG2(
-					5000, 256, false);
+		Mat quadroFG = cvarrToMat(quadroCinza.clone());
+		BackgroundSubtractor extratorDeFundo = createBackgroundSubtractorMOG2(
+				5000, 256, false);
 
-			Params params = new Params();
-			params.minDistBetweenBlobs(200.0f);
-			params.filterByInertia(false);
-			params.filterByConvexity(false);
-			params.filterByColor(false);
-			params.filterByCircularity(false);
-			params.filterByArea(true);
-			params.minArea(5000.0f);
-			params.maxArea(4000000.0f);
+		Params params = new Params();
+		params.minDistBetweenBlobs(200.0f);
+		params.filterByInertia(false);
+		params.filterByConvexity(false);
+		params.filterByColor(false);
+		params.filterByCircularity(false);
+		params.filterByArea(true);
+		params.minArea(5000.0f);
+		params.maxArea(4000000.0f);
 
-			SimpleBlobDetector detectorDeBlob = SimpleBlobDetector
-					.create(params);
+		SimpleBlobDetector detectorDeBlob = SimpleBlobDetector.create(params);
 
-			Mat kernel = getStructuringElement(MORPH_ELLIPSE, new Size(9, 9));
-			Mat kernelDilate = getStructuringElement(MORPH_ELLIPSE, new Size(
-					27, 27));
+		Mat kernel = getStructuringElement(MORPH_ELLIPSE, new Size(9, 9));
+		Mat kernelDilate = getStructuringElement(MORPH_ELLIPSE,
+				new Size(27, 27));
 
-			learningFrames = 150;
+		learningFrames = 150;
 
-			boolean finished = false;
-			while (!finished) {
-				cvClearMemStorage(mem);
 
-				quadro = conversor.convert(webcam.grab());
-				if (quadro == null) {
-					finished = true;
-					continue;
-				}
+		boolean finished = false;
+		while (!finished) {
+			cvClearMemStorage(mem);
 
-				cvResize(quadro, quadroReduzido);
-				cvCvtColor(quadroReduzido, quadroCinza, CV_BGR2GRAY);
+			IplImage quadroReduzido = filtroResize.getOutput();
+			quadroCinza = filtroGrayscale.getOutput();
+			
+			extraiFundo(quadroReduzido, quadroFG, extratorDeFundo, kernel,
+					kernelDilate);
 
-				extraiFundo(quadroReduzido, quadroFG, extratorDeFundo, kernel,
-						kernelDilate);
+			cvEqualizeHist(quadroCinza, quadroCinza);
 
-				cvEqualizeHist(quadroCinza, quadroCinza);
+			detectaBlobs(quadroReduzido, quadroFG, detectorDeBlob);
 
-				detectaBlobs(quadroReduzido, quadroFG, detectorDeBlob);
+			Mat quadroContorno = quadroFG.clone();
+			CvSeq contour = extraiContornos(mem, conversor, quadroContorno);
+			contour = trataContorno(mem, classificadorFrente,
+					classificadorPerfil, quadroReduzido, quadroCinza, contour);
 
-				Mat quadroContorno = quadroFG.clone();
-				CvSeq contour = extraiContornos(mem, conversor, quadroContorno);
-				contour = trataContorno(mem, classificadorFrente,
-						classificadorPerfil, quadroReduzido, quadroCinza,
-						contour);
-
-				Mat quadroFinal = cvarrToMat(quadroReduzido);
-				putText(quadroFinal, estado, new Point(10, 32),
-						FONT_HERSHEY_COMPLEX_SMALL, 1.5, Scalar.BLACK, 5,
-						LINE_AA, false);
-				Scalar cor = Scalar.GREEN;
-				if (estado.equals("De lado")) {
-					cor = Scalar.YELLOW;
-				} else if (estado.equals("De costas")) {
-					cor = Scalar.RED;
-				}
-				putText(quadroFinal, estado, new Point(10, 32),
-						FONT_HERSHEY_COMPLEX_SMALL, 1.5, cor, 2, LINE_AA, false);
-
-				janela.showImage(conversor.convert(quadroFinal));
-				janelaDebug.showImage(conversor.convert(quadroFG));
+			Mat quadroFinal = cvarrToMat(quadroReduzido);
+			putText(quadroFinal, estado, new Point(10, 32),
+					FONT_HERSHEY_COMPLEX_SMALL, 1.5, Scalar.BLACK, 5, LINE_AA,
+					false);
+			Scalar cor = Scalar.GREEN;
+			if (estado.equals("De lado")) {
+				cor = Scalar.YELLOW;
+			} else if (estado.equals("De costas")) {
+				cor = Scalar.RED;
 			}
+			putText(quadroFinal, estado, new Point(10, 32),
+					FONT_HERSHEY_COMPLEX_SMALL, 1.5, cor, 2, LINE_AA, false);
 
-			janela.dispose();
-			janelaDebug.dispose();
-			webcam.stop();
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			janela.showImage(conversor.convert(quadroFinal));
+			janelaDebug.showImage(conversor.convert(quadroCinza));
 		}
+
+		janela.dispose();
+		janelaDebug.dispose();
+		webcam.close();
 	}
 
 	private CvSeq trataContorno(CvMemStorage mem,
@@ -184,60 +177,53 @@ public class SupervisorDeTreino {
 							new CvPoint(box.x(), box.y()),
 							new CvPoint(box.x() + box.width(), box.y()
 									+ box.height()), CvScalar.GREEN);
-
-					if (learningFrames == 0) {
-						cvSetImageROI(quadroCinza, box);
-						RectVector faces = detectaRosto(mem,
-								classificadorFrente, quadroCinza);
-						if (faces.size() > 0) {
-							estado = "De frente";
-							contadorDeCostas = 0;
-							desenhaRetangulos(quadroReduzido, box, faces);
-						} else {
-							faces = detectaRosto(mem, classificadorPerfil,
-									quadroCinza);
-							if (faces.size() > 0) {
-								estado = "De lado";
-								contadorDeCostas = 0;
-								desenhaRetangulos(quadroReduzido, box, faces);
-							} else {
-								cvFlip(quadroCinza, quadroCinza, 1);
-								faces = detectaRosto(mem, classificadorPerfil,
-										quadroCinza);
-								cvFlip(quadroCinza, quadroCinza, 1);
-								if (faces.size() > 0) {
-									estado = "De lado";
-									contadorDeCostas = 0;
-									cvFlip(quadroReduzido, quadroReduzido, 1);
-									box.x(quadroReduzido.width() - box.x());
-									desenhaRetangulos(quadroReduzido, box,
-											faces);
-									box.x(quadroReduzido.width() - box.x());
-									cvFlip(quadroReduzido, quadroReduzido, 1);
-								} else {
-									contadorDeCostas += System
-											.currentTimeMillis()
-											- tempoUltimoQuadro;
-									if (contadorDeCostas > THRESHOLD_COSTAS) {
-										estado = "De costas";
-									}
-								}
-							}
-						}
-						tempoUltimoQuadro = System.currentTimeMillis();
-
-						if (contadorDeCostas > TEMPO_MAXIMO_COSTAS) {
-							contadorDeCostas = 0;
-							tocaAlarme();
-						}
-						System.out.println("Costas : " + contadorDeCostas);
-						cvResetImageROI(quadroCinza);
-					}
 				}
 
 			}
 			contour = contour.h_next();
 		}
+
+		if (learningFrames == 0) {
+			RectVector faces = detectaRosto(mem, classificadorFrente,
+					quadroCinza);
+			if (faces.size() > 0) {
+				estado = "De frente";
+				contadorDeCostas = 0;
+				desenhaRetangulos(quadroReduzido, faces);
+			} else {
+				faces = detectaRosto(mem, classificadorPerfil, quadroCinza);
+				if (faces.size() > 0) {
+					estado = "De lado";
+					contadorDeCostas = 0;
+					desenhaRetangulos(quadroReduzido, faces);
+				} else {
+					cvFlip(quadroCinza, quadroCinza, 1);
+					faces = detectaRosto(mem, classificadorPerfil, quadroCinza);
+					cvFlip(quadroCinza, quadroCinza, 1);
+					if (faces.size() > 0) {
+						estado = "De lado";
+						contadorDeCostas = 0;
+						cvFlip(quadroReduzido, quadroReduzido, 1);
+						desenhaRetangulos(quadroReduzido, faces);
+						cvFlip(quadroReduzido, quadroReduzido, 1);
+					} else {
+						contadorDeCostas += System.currentTimeMillis()
+								- tempoUltimoQuadro;
+						if (contadorDeCostas > THRESHOLD_COSTAS) {
+							estado = "De costas";
+						}
+					}
+				}
+			}
+			tempoUltimoQuadro = System.currentTimeMillis();
+
+			if (contadorDeCostas > TEMPO_MAXIMO_COSTAS) {
+				contadorDeCostas = 0;
+				tocaAlarme();
+			}
+			System.out.println("Costas : " + contadorDeCostas);
+		}
+
 		return contour;
 	}
 
@@ -279,12 +265,10 @@ public class SupervisorDeTreino {
 		return blobs;
 	}
 
-	private void desenhaRetangulos(IplImage quadroReduzido, CvRect box,
-			RectVector faces) {
+	private void desenhaRetangulos(IplImage quadroReduzido, RectVector faces) {
 		for (int i = 0; i < faces.size(); i++) {
 			Rect r = faces.get(i);
-			int x = r.x() + box.x(), y = r.y() + box.y(), w = r.width(), h = r
-					.height();
+			int x = r.x(), y = r.y(), w = r.width(), h = r.height();
 			cvRectangle(quadroReduzido, cvPoint(x, y), cvPoint(x + w, y + h),
 					CvScalar.RED, 4, CV_AA, 0);
 		}
