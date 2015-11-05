@@ -7,12 +7,13 @@ import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter.ToIplImage;
 
 public class WebCamFonte extends Fonte<IplImage> {
-	
+
 	private ToIplImage conversor;
 	private FrameGrabber webcam;
 	private int width;
 	private int height;
 	private double gamma;
+	private IplImage output;
 
 	public WebCamFonte() {
 		try {
@@ -27,15 +28,20 @@ public class WebCamFonte extends Fonte<IplImage> {
 			throw new RuntimeException(e);
 		}
 	}
-	
+
 	@Override
 	public IplImage getOutput() {
-		try {
-			return conversor.convert(webcam.grab());
-		} catch (Exception e) {
-			throw new RuntimeException(e);
+		if (!pronto) {
+			try {
+				output = conversor.convert(webcam.grab());
+				pronto = true;
+				return output;
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
 		}
-	} 
+		return output;
+	}
 
 	public double getGamma() {
 		return gamma;

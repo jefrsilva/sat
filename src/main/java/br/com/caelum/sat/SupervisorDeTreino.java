@@ -3,7 +3,6 @@ package br.com.caelum.sat;
 import static org.bytedeco.javacpp.opencv_core.*;
 import static org.bytedeco.javacpp.opencv_imgproc.*;
 import static org.bytedeco.javacpp.opencv_objdetect.*;
-import static org.bytedeco.javacpp.opencv_video.*;
 
 import java.io.IOException;
 import java.net.URL;
@@ -26,13 +25,13 @@ import org.bytedeco.javacpp.opencv_features2d.SimpleBlobDetector;
 import org.bytedeco.javacpp.opencv_features2d.SimpleBlobDetector.Params;
 import org.bytedeco.javacpp.opencv_objdetect;
 import org.bytedeco.javacpp.opencv_objdetect.CascadeClassifier;
-import org.bytedeco.javacpp.opencv_video.BackgroundSubtractor;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 
+import br.com.caelum.sat.filtro.BackgroundSubFiltro;
+import br.com.caelum.sat.filtro.DetectorDePostura;
 import br.com.caelum.sat.filtro.EqualizeFiltro;
-import br.com.caelum.sat.filtro.GrayscaleFiltro;
-import br.com.caelum.sat.filtro.Processo;
+import br.com.caelum.sat.filtro.MorphologyFiltro;
 import br.com.caelum.sat.filtro.ResizeFiltro;
 import br.com.caelum.sat.filtro.WebCamFonte;
 
@@ -59,9 +58,9 @@ public class SupervisorDeTreino {
 
 	public void inicia() {
 		Loader.load(opencv_objdetect.class);
-		
-		Processo detectorDePostura = new Processo();
-		
+
+		DetectorDePostura detectorDePostura = new DetectorDePostura();
+
 		CvMemStorage mem = CvMemStorage.create();
 		OpenCVFrameConverter.ToIplImage conversor = new OpenCVFrameConverter.ToIplImage();
 
@@ -79,36 +78,13 @@ public class SupervisorDeTreino {
 		CascadeClassifier classificadorPerfil = new CascadeClassifier(
 				pathProfileFace);
 
-		WebCamFonte webcam = new WebCamFonte();
-		detectorDePostura.add("Webcam", webcam);
-
+		WebCamFonte webcam = (WebCamFonte) detectorDePostura.get("Webcam");
 		double gamma = CanvasFrame.getDefaultGamma() / webcam.getGamma();
+
 		janela = criaJanela("Webcam", gamma, 1.0);
 		janelaDebug = criaJanela("Debug", 1.0, 1.0);
 		janelaDebug.setBounds((int) LARGURA_JANELA, 0, janela.getWidth(),
 				janela.getHeight());
-
-		double fatorDeEscala = LARGURA_JANELA / webcam.getWidth();
-		int width = (int) (webcam.getWidth() * fatorDeEscala);
-		int height = (int) (webcam.getHeight() * fatorDeEscala);
-		
-		ResizeFiltro filtroResize = new ResizeFiltro(width, height);
-		webcam.conecta(filtroResize);
-		detectorDePostura.add("Resize", filtroResize);
-		
-		GrayscaleFiltro filtroGrayscale = new GrayscaleFiltro();
-		filtroResize.conecta(filtroGrayscale);
-		detectorDePostura.add("Grayscale", filtroGrayscale);
-		
-		EqualizeFiltro filtroEqualize = new EqualizeFiltro();
-		filtroGrayscale.conecta(filtroEqualize);
-		detectorDePostura.add("Equalize", filtroEqualize);
-
-		IplImage quadroCinza = IplImage.create(width, height, webcam.getOutput().depth(), 1);
-
-		Mat quadroFG = cvarrToMat(quadroCinza.clone());
-		BackgroundSubtractor extratorDeFundo = createBackgroundSubtractorMOG2(
-				5000, 256, false);
 
 		Params params = new Params();
 		params.minDistBetweenBlobs(200.0f);
@@ -122,24 +98,22 @@ public class SupervisorDeTreino {
 
 		SimpleBlobDetector detectorDeBlob = SimpleBlobDetector.create(params);
 
-		Mat kernel = getStructuringElement(MORPH_ELLIPSE, new Size(9, 9));
-		Mat kernelDilate = getStructuringElement(MORPH_ELLIPSE,
-				new Size(27, 27));
-
-		learningFrames = 150;
-
 		boolean finished = false;
 		while (!finished) {
 			detectorDePostura.reseta();
 			cvClearMemStorage(mem);
 
+			ResizeFiltro filtroResize = (ResizeFiltro) detectorDePostura
+					.get("Resize");
 			IplImage quadroReduzido = filtroResize.getOutput();
-			quadroCinza = filtroGrayscale.getOutput();
-			
-			extraiFundo(quadroReduzido, quadroFG, extratorDeFundo, kernel,
-					kernelDilate);
 
-			quadroCinza = filtroEqualize.getOutput();
+			MorphologyFiltro filtroMorph = (MorphologyFiltro) detectorDePostura
+					.get("MorphDilate");
+			Mat quadroFG = filtroMorph.getOutput();
+
+			EqualizeFiltro filtroEqualize = (EqualizeFiltro) detectorDePostura
+					.get("Equalize");
+			IplImage quadroCinza = filtroEqualize.getOutput();
 
 			detectaBlobs(quadroReduzido, quadroFG, detectorDeBlob);
 
@@ -246,20 +220,6 @@ public class SupervisorDeTreino {
 				mem, contour, Loader.sizeof(CvContour.class), CV_RETR_EXTERNAL,
 				CV_CHAIN_APPROX_TC89_L1);
 		return contour;
-	}
-
-	private void extraiFundo(IplImage quadroReduzido, Mat quadroFG,
-			BackgroundSubtractor extratorDeFundo, Mat kernel, Mat kernelDilate) {
-		if (learningFrames > 0) {
-			System.out.println("Learning " + learningFrames);
-			learningFrames--;
-			extratorDeFundo.apply(cvarrToMat(quadroReduzido), quadroFG, 0.001);
-		} else {
-			extratorDeFundo.apply(cvarrToMat(quadroReduzido), quadroFG, 0);
-		}
-		morphologyEx(quadroFG, quadroFG, MORPH_OPEN, kernel);
-		morphologyEx(quadroFG, quadroFG, MORPH_CLOSE, kernel);
-		dilate(quadroFG, quadroFG, kernelDilate);
 	}
 
 	private KeyPointVector detectaBlobs(IplImage quadroReduzido, Mat quadroFG,

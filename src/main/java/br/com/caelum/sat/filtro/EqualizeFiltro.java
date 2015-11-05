@@ -13,7 +13,8 @@ public class EqualizeFiltro extends Filtro<IplImage, IplImage> {
 		IplImage input = getInput();
 		if (output == null) {
 			output = input.clone();
-		} else if (!pronto) {
+		}
+		if (!pronto) {
 			cvEqualizeHist(input, output);
 			pronto = true;
 		}

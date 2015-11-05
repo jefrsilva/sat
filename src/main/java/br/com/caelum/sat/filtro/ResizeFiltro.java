@@ -20,7 +20,8 @@ public class ResizeFiltro extends Filtro<IplImage, IplImage> {
 			IplImage input = getInput();
 			output = IplImage.create(width, height, input.depth(),
 					input.nChannels());
-		} else if (!pronto) {
+		}
+		if (!pronto) {
 			IplImage input = getInput();
 			cvResize(input, output);
 			pronto = true;

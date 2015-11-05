@@ -14,7 +14,8 @@ public class GrayscaleFiltro extends Filtro<IplImage, IplImage> {
 			IplImage input = getInput();
 			output = IplImage.create(input.width(), input.height(),
 					input.depth(), 1);
-		} else if (!pronto) {
+		}
+		if (!pronto) {
 			IplImage input = getInput();
 			cvCvtColor(input, output, CV_BGR2GRAY);
 			pronto = true;
