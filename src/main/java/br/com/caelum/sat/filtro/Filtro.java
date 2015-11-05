@@ -1,5 +1,7 @@
 package br.com.caelum.sat.filtro;
 
+import br.com.caelum.sat.processo.Processo;
+
 public abstract class Filtro<T1, T2> {
 
 	protected boolean pronto;

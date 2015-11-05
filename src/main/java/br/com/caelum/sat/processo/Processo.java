@@ -1,7 +1,9 @@
-package br.com.caelum.sat.filtro;
+package br.com.caelum.sat.processo;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import br.com.caelum.sat.filtro.Filtro;
 
 public class Processo {
 

@@ -28,12 +28,12 @@ import org.bytedeco.javacpp.opencv_objdetect.CascadeClassifier;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 
-import br.com.caelum.sat.filtro.BackgroundSubFiltro;
-import br.com.caelum.sat.filtro.DetectorDePostura;
 import br.com.caelum.sat.filtro.EqualizeFiltro;
 import br.com.caelum.sat.filtro.MorphologyFiltro;
 import br.com.caelum.sat.filtro.ResizeFiltro;
 import br.com.caelum.sat.filtro.WebCamFonte;
+import br.com.caelum.sat.processo.DetectorDePostura;
+import br.com.caelum.sat.processo.DetectorDePostura.Postura;
 
 public class SupervisorDeTreino {
 
@@ -64,20 +64,6 @@ public class SupervisorDeTreino {
 		CvMemStorage mem = CvMemStorage.create();
 		OpenCVFrameConverter.ToIplImage conversor = new OpenCVFrameConverter.ToIplImage();
 
-		String pathFrontalFace = this
-				.getClass()
-				.getClassLoader()
-				.getResource("haarcascades/haarcascade_frontalface_default.xml")
-				.getPath();
-		CascadeClassifier classificadorFrente = new CascadeClassifier(
-				pathFrontalFace);
-
-		String pathProfileFace = this.getClass().getClassLoader()
-				.getResource("haarcascades/haarcascade_profileface.xml")
-				.getPath();
-		CascadeClassifier classificadorPerfil = new CascadeClassifier(
-				pathProfileFace);
-
 		WebCamFonte webcam = (WebCamFonte) detectorDePostura.get("Webcam");
 		double gamma = CanvasFrame.getDefaultGamma() / webcam.getGamma();
 
@@ -107,36 +93,39 @@ public class SupervisorDeTreino {
 					.get("Resize");
 			IplImage quadroReduzido = filtroResize.getOutput();
 
-			MorphologyFiltro filtroMorph = (MorphologyFiltro) detectorDePostura
-					.get("MorphDilate");
-			Mat quadroFG = filtroMorph.getOutput();
+//			MorphologyFiltro filtroMorph = (MorphologyFiltro) detectorDePostura
+//					.get("MorphDilate");
+//			Mat quadroFG = filtroMorph.getOutput();
 
-			EqualizeFiltro filtroEqualize = (EqualizeFiltro) detectorDePostura
-					.get("Equalize");
-			IplImage quadroCinza = filtroEqualize.getOutput();
+			// EqualizeFiltro filtroEqualize = (EqualizeFiltro)
+			// detectorDePostura
+			// .get("Equalize");
+			// IplImage quadroCinza = filtroEqualize.getOutput();
 
-			detectaBlobs(quadroReduzido, quadroFG, detectorDeBlob);
+			// detectaBlobs(quadroReduzido, quadroFG, detectorDeBlob);
 
-			Mat quadroContorno = quadroFG.clone();
-			CvSeq contour = extraiContornos(mem, conversor, quadroContorno);
-			contour = trataContorno(mem, classificadorFrente,
-					classificadorPerfil, quadroReduzido, quadroCinza, contour);
+			// Mat quadroContorno = quadroFG.clone();
+			// CvSeq contour = extraiContornos(mem, conversor, quadroContorno);
+			// contour = trataContorno(mem, classificadorFrente,
+			// classificadorPerfil, quadroReduzido, quadroCinza, contour);
+
+			Postura postura = detectorDePostura.getPostura();
 
 			Mat quadroFinal = cvarrToMat(quadroReduzido);
-			putText(quadroFinal, estado, new Point(10, 32),
+			putText(quadroFinal, postura.name(), new Point(10, 32),
 					FONT_HERSHEY_COMPLEX_SMALL, 1.5, Scalar.BLACK, 5, LINE_AA,
 					false);
 			Scalar cor = Scalar.GREEN;
-			if (estado.equals("De lado")) {
+			if (postura == Postura.ESQUERDA || postura == Postura.DIREITA) {
 				cor = Scalar.YELLOW;
-			} else if (estado.equals("De costas")) {
+			} else if (postura == Postura.INDEFINIDO) {
 				cor = Scalar.RED;
 			}
-			putText(quadroFinal, estado, new Point(10, 32),
+			putText(quadroFinal, postura.name(), new Point(10, 32),
 					FONT_HERSHEY_COMPLEX_SMALL, 1.5, cor, 2, LINE_AA, false);
 
 			janela.showImage(conversor.convert(quadroFinal));
-			janelaDebug.showImage(conversor.convert(quadroFG));
+			//janelaDebug.showImage(conversor.convert(quadroFG));
 		}
 
 		janela.dispose();
