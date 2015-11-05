@@ -38,6 +38,7 @@ public class DetectorDePostura extends Processo {
 	private ParHaarPostura parEsquerda;
 	private ParHaarPostura parDireita;
 	private List<ParHaarPostura> ordemDeTeste;
+	private RectVector resultado;
 
 	public DetectorDePostura() {
 		postura = Postura.FRENTE;
@@ -121,9 +122,15 @@ public class DetectorDePostura extends Processo {
 		for (ParHaarPostura par : ordemDeTeste) {
 			RectVector objetos = par.filtro.getOutput();
 			if (objetos.size() > 0) {
+				resultado = objetos;
 				return par.postura;
 			}
 		}
+		resultado = null;
 		return Postura.INDEFINIDO;
+	}
+	
+	public RectVector getResultado() {
+		return resultado;
 	}
 }
