@@ -16,12 +16,15 @@ public class ResizeFiltro extends Filtro<IplImage, IplImage> {
 
 	@Override
 	public IplImage getOutput() {
-		IplImage input = getInput();
 		if (output == null) {
+			IplImage input = getInput();
 			output = IplImage.create(width, height, input.depth(),
 					input.nChannels());
+		} else if (!pronto) {
+			IplImage input = getInput();
+			cvResize(input, output);
+			pronto = true;
 		}
-		cvResize(input, output);
 		return output;
 	}
 }

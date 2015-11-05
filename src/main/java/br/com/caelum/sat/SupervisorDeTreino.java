@@ -30,7 +30,9 @@ import org.bytedeco.javacpp.opencv_video.BackgroundSubtractor;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 
+import br.com.caelum.sat.filtro.EqualizeFiltro;
 import br.com.caelum.sat.filtro.GrayscaleFiltro;
+import br.com.caelum.sat.filtro.Processo;
 import br.com.caelum.sat.filtro.ResizeFiltro;
 import br.com.caelum.sat.filtro.WebCamFonte;
 
@@ -57,6 +59,9 @@ public class SupervisorDeTreino {
 
 	public void inicia() {
 		Loader.load(opencv_objdetect.class);
+		
+		Processo detectorDePostura = new Processo();
+		
 		CvMemStorage mem = CvMemStorage.create();
 		OpenCVFrameConverter.ToIplImage conversor = new OpenCVFrameConverter.ToIplImage();
 
@@ -75,6 +80,7 @@ public class SupervisorDeTreino {
 				pathProfileFace);
 
 		WebCamFonte webcam = new WebCamFonte();
+		detectorDePostura.add("Webcam", webcam);
 
 		double gamma = CanvasFrame.getDefaultGamma() / webcam.getGamma();
 		janela = criaJanela("Webcam", gamma, 1.0);
@@ -88,9 +94,15 @@ public class SupervisorDeTreino {
 		
 		ResizeFiltro filtroResize = new ResizeFiltro(width, height);
 		webcam.conecta(filtroResize);
+		detectorDePostura.add("Resize", filtroResize);
 		
 		GrayscaleFiltro filtroGrayscale = new GrayscaleFiltro();
 		filtroResize.conecta(filtroGrayscale);
+		detectorDePostura.add("Grayscale", filtroGrayscale);
+		
+		EqualizeFiltro filtroEqualize = new EqualizeFiltro();
+		filtroGrayscale.conecta(filtroEqualize);
+		detectorDePostura.add("Equalize", filtroEqualize);
 
 		IplImage quadroCinza = IplImage.create(width, height, webcam.getOutput().depth(), 1);
 
@@ -116,9 +128,9 @@ public class SupervisorDeTreino {
 
 		learningFrames = 150;
 
-
 		boolean finished = false;
 		while (!finished) {
+			detectorDePostura.reseta();
 			cvClearMemStorage(mem);
 
 			IplImage quadroReduzido = filtroResize.getOutput();
@@ -127,7 +139,7 @@ public class SupervisorDeTreino {
 			extraiFundo(quadroReduzido, quadroFG, extratorDeFundo, kernel,
 					kernelDilate);
 
-			cvEqualizeHist(quadroCinza, quadroCinza);
+			quadroCinza = filtroEqualize.getOutput();
 
 			detectaBlobs(quadroReduzido, quadroFG, detectorDeBlob);
 
@@ -150,12 +162,12 @@ public class SupervisorDeTreino {
 					FONT_HERSHEY_COMPLEX_SMALL, 1.5, cor, 2, LINE_AA, false);
 
 			janela.showImage(conversor.convert(quadroFinal));
-			janelaDebug.showImage(conversor.convert(quadroCinza));
+			janelaDebug.showImage(conversor.convert(quadroFG));
 		}
 
 		janela.dispose();
 		janelaDebug.dispose();
-		webcam.close();
+		webcam.finish();
 	}
 
 	private CvSeq trataContorno(CvMemStorage mem,
