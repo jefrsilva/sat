@@ -123,10 +123,11 @@ public class DetectorDePostura extends Processo {
 			RectVector objetos = par.filtro.getOutput();
 			if (objetos.size() > 0) {
 				resultado = objetos;
+				postura = par.postura;
 				return par.postura;
 			}
 		}
-		resultado = null;
+		resultado = new RectVector();
 		return Postura.INDEFINIDO;
 	}
 	

@@ -55,7 +55,7 @@ public class WebCamFonte extends Fonte<IplImage> {
 		return height;
 	}
 
-	public void close() {
+	public void finaliza() {
 		try {
 			webcam.stop();
 		} catch (Exception e) {

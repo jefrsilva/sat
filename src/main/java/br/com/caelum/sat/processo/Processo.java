@@ -27,5 +27,11 @@ public class Processo {
 			filtro.reseta();
 		}
 	}
+	
+	public void finaliza() {
+		for (Filtro<?, ?> filtro : filtros.values()) {
+			filtro.finaliza();
+		}
+	}
 
 }

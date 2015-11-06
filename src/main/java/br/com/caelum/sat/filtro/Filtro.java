@@ -31,7 +31,7 @@ public abstract class Filtro<T1, T2> {
 		pronto = false;
 	}
 	
-	public void finish() {
+	public void finaliza() {
 		
 	}
 

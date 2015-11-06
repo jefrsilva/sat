@@ -110,12 +110,12 @@ public class SupervisorDeTreino {
 					FONT_HERSHEY_COMPLEX_SMALL, 1.5, cor, 2, LINE_AA, false);
 
 			janela.showImage(conversor.convert(quadroFinal));
-			// janelaDebug.showImage(conversor.convert(quadroFG));
+			// janelaDebug.showImage(conversor.convert(quadroReduzido));
 		}
 
 		janela.dispose();
 		janelaDebug.dispose();
-		webcam.finish();
+		detectorDePostura.finaliza();
 	}
 
 	private CvSeq trataContorno(CvMemStorage mem,
