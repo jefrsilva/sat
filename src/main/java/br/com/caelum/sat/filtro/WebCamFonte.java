@@ -35,7 +35,6 @@ public class WebCamFonte extends Fonte<IplImage> {
 			try {
 				output = conversor.convert(webcam.grab());
 				pronto = true;
-				return output;
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}

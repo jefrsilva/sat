@@ -21,15 +21,11 @@ import org.bytedeco.javacpp.opencv_core.CvScalar;
 import org.bytedeco.javacpp.opencv_core.CvSeq;
 import org.bytedeco.javacpp.opencv_core.IplImage;
 import org.bytedeco.javacpp.opencv_core.Mat;
-import org.bytedeco.javacpp.opencv_features2d.SimpleBlobDetector;
-import org.bytedeco.javacpp.opencv_features2d.SimpleBlobDetector.Params;
 import org.bytedeco.javacpp.opencv_objdetect;
 import org.bytedeco.javacpp.opencv_objdetect.CascadeClassifier;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 
-import br.com.caelum.sat.filtro.EqualizeFiltro;
-import br.com.caelum.sat.filtro.MorphologyFiltro;
 import br.com.caelum.sat.filtro.ResizeFiltro;
 import br.com.caelum.sat.filtro.WebCamFonte;
 import br.com.caelum.sat.processo.DetectorDePostura;

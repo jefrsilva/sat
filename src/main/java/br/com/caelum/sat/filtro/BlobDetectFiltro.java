@@ -1,11 +1,9 @@
-package br.com.caelum.sat;
+package br.com.caelum.sat.filtro;
 
 import org.bytedeco.javacpp.opencv_core.KeyPointVector;
 import org.bytedeco.javacpp.opencv_core.Mat;
 import org.bytedeco.javacpp.opencv_features2d.SimpleBlobDetector;
 import org.bytedeco.javacpp.opencv_features2d.SimpleBlobDetector.Params;
-
-import br.com.caelum.sat.filtro.Filtro;
 
 public class BlobDetectFiltro extends Filtro<Mat, KeyPointVector> {
 

@@ -28,7 +28,6 @@ public class HaarCascadeFiltro extends Filtro<IplImage, RectVector> {
 		if (!pronto) {
 			classificador.detectMultiScale(cvarrToMat(input), output, 1.1, 5,
 					CV_HAAR_DO_CANNY_PRUNING, new Size(20, 20), new Size(0, 0));
-			System.out.println("Haar Rects " + output.size());
 			pronto = true;
 		}
 		return output;
