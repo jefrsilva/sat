@@ -1,7 +1,15 @@
 package br.com.caelum.sat.processo;
 
+import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
 
 import org.bytedeco.javacpp.opencv_core.RectVector;
 
@@ -18,20 +26,7 @@ import br.com.caelum.sat.filtro.WebCamFonte;
 
 public class DetectorDePostura extends Processo {
 	private static final double LARGURA_QUADRO = 640.0;
-
-	public enum Postura {
-		FRENTE, ESQUERDA, DIREITA, INDEFINIDO
-	}
-
-	public class ParHaarPostura {
-		public HaarCascadeFiltro filtro;
-		public Postura postura;
-
-		public ParHaarPostura(HaarCascadeFiltro filtro, Postura postura) {
-			this.filtro = filtro;
-			this.postura = postura;
-		}
-	}
+	private static final long TEMPO_MAX_INDEFINIDO = 5000;
 
 	private Postura postura;
 	private ParHaarPostura parFrente;
@@ -39,6 +34,7 @@ public class DetectorDePostura extends Processo {
 	private ParHaarPostura parDireita;
 	private List<ParHaarPostura> ordemDeTeste;
 	private RectVector resultado;
+	private long tempoIndefinido = 0;
 
 	public DetectorDePostura() {
 		postura = Postura.FRENTE;
@@ -133,5 +129,37 @@ public class DetectorDePostura extends Processo {
 	
 	public RectVector getResultado() {
 		return resultado;
+	}
+
+	public void atualiza(long tempoCorrido) {
+		Postura postura = getPostura();
+		if (postura == Postura.INDEFINIDO) {
+			tempoIndefinido  += tempoCorrido;
+			if(tempoIndefinido >= TEMPO_MAX_INDEFINIDO){
+				tocaAlarme();
+				tempoIndefinido = 0;
+			}
+			
+		} else{
+			tempoIndefinido = 0;
+		}
+		
+	}
+	
+	public void tocaAlarme() {
+		try {
+			URL url = this.getClass().getClassLoader()
+					.getResource("buzzer.wav");
+			AudioInputStream audioIn = AudioSystem.getAudioInputStream(url);
+			Clip clip = AudioSystem.getClip();
+			clip.open(audioIn);
+			clip.start();
+		} catch (UnsupportedAudioFileException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (LineUnavailableException e) {
+			e.printStackTrace();
+		}
 	}
 }
