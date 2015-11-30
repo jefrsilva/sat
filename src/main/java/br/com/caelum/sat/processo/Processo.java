@@ -4,12 +4,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 import br.com.caelum.sat.filtro.Filtro;
+import br.com.caelum.sat.model.Aula;
 
 public class Processo {
 
 	private Map<String, Filtro<?, ?>> filtros;
+	protected Aula aula;
 
-	public Processo() {
+	public Processo(Aula aula) {
+		this.aula = aula;
 		filtros = new HashMap<String, Filtro<?, ?>>();
 	}
 	

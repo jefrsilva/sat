@@ -23,23 +23,24 @@ import br.com.caelum.sat.filtro.MorphologyFiltro;
 import br.com.caelum.sat.filtro.MorphologyFiltro.Operacao;
 import br.com.caelum.sat.filtro.ResizeFiltro;
 import br.com.caelum.sat.filtro.WebCamFonte;
+import br.com.caelum.sat.model.Aula;
+import br.com.caelum.sat.model.EventoTrocaDePostura;
 
 public class DetectorDePostura extends Processo {
 	private static final double LARGURA_QUADRO = 640.0;
 	private static final long TEMPO_MAX_INDEFINIDO = 5000;
 
-	private Postura postura;
+	private Postura postura = null;
+	private Postura posturaAnterior = Postura.FRENTE;
 	private ParHaarPostura parFrente;
 	private ParHaarPostura parEsquerda;
 	private ParHaarPostura parDireita;
-	private List<ParHaarPostura> ordemDeTeste;
+	private List<ParHaarPostura> ordemDeTeste = new ArrayList<ParHaarPostura>();
 	private RectVector resultado;
 	private long tempoIndefinido = 0;
 
-	public DetectorDePostura() {
-		postura = Postura.FRENTE;
-		ordemDeTeste = new ArrayList<ParHaarPostura>();
-
+	public DetectorDePostura(Aula aula) {
+		super(aula);
 		WebCamFonte webcam = new WebCamFonte();
 		add("Webcam", webcam);
 
@@ -100,31 +101,37 @@ public class DetectorDePostura extends Processo {
 	}
 	
 	public Postura getPostura() {
-		ordemDeTeste.clear();
-		if (postura == Postura.FRENTE || postura == Postura.INDEFINIDO) {
-			ordemDeTeste.add(parFrente);
-			ordemDeTeste.add(parDireita);
-			ordemDeTeste.add(parEsquerda);
-		} else if (postura == Postura.DIREITA) {
-			ordemDeTeste.add(parDireita);
-			ordemDeTeste.add(parFrente);
-			ordemDeTeste.add(parEsquerda);
-		} else if (postura == Postura.ESQUERDA) {
-			ordemDeTeste.add(parEsquerda);
-			ordemDeTeste.add(parFrente);
-			ordemDeTeste.add(parDireita);
-		}
-
-		for (ParHaarPostura par : ordemDeTeste) {
-			RectVector objetos = par.filtro.getOutput();
-			if (objetos.size() > 0) {
-				resultado = objetos;
-				postura = par.postura;
-				return par.postura;
+		if(postura == null){
+			ordemDeTeste.clear();
+			if (posturaAnterior == Postura.FRENTE || posturaAnterior == Postura.INDEFINIDO) {
+				ordemDeTeste.add(parFrente);
+				ordemDeTeste.add(parDireita);
+				ordemDeTeste.add(parEsquerda);
+			} else if (posturaAnterior == Postura.DIREITA) {
+				ordemDeTeste.add(parDireita);
+				ordemDeTeste.add(parFrente);
+				ordemDeTeste.add(parEsquerda);
+			} else if (posturaAnterior == Postura.ESQUERDA) {
+				ordemDeTeste.add(parEsquerda);
+				ordemDeTeste.add(parFrente);
+				ordemDeTeste.add(parDireita);
 			}
+			
+			for (ParHaarPostura par : ordemDeTeste) {
+				RectVector objetos = par.filtro.getOutput();
+				if (objetos.size() > 0) {
+					resultado = objetos;
+					postura = par.postura;
+					return postura;
+				}
+			}
+			resultado = new RectVector();
+			postura = Postura.INDEFINIDO;
+			return postura;
 		}
-		resultado = new RectVector();
-		return Postura.INDEFINIDO;
+		
+		return postura;
+
 	}
 	
 	public RectVector getResultado() {
@@ -133,6 +140,10 @@ public class DetectorDePostura extends Processo {
 
 	public void atualiza(long tempoCorrido) {
 		Postura postura = getPostura();
+		if(postura != posturaAnterior){
+			EventoTrocaDePostura trocaDePostura = new EventoTrocaDePostura(postura);
+			aula.addEvento(trocaDePostura);
+		}
 		if (postura == Postura.INDEFINIDO) {
 			tempoIndefinido  += tempoCorrido;
 			if(tempoIndefinido >= TEMPO_MAX_INDEFINIDO){
@@ -144,6 +155,13 @@ public class DetectorDePostura extends Processo {
 			tempoIndefinido = 0;
 		}
 		
+	}
+	
+	@Override
+	public void reseta() {
+		posturaAnterior = postura;
+		postura = null;
+		super.reseta();
 	}
 	
 	public void tocaAlarme() {

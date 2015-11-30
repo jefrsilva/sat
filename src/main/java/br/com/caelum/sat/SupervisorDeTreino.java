@@ -4,6 +4,9 @@ import static org.bytedeco.javacpp.helper.opencv_imgproc.*;
 import static org.bytedeco.javacpp.opencv_core.*;
 import static org.bytedeco.javacpp.opencv_imgproc.*;
 
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
+
 import javax.swing.JFrame;
 
 import org.bytedeco.javacpp.Loader;
@@ -51,7 +54,7 @@ public class SupervisorDeTreino {
 		this.aula = new Aula();
 		Loader.load(opencv_objdetect.class);
 
-		DetectorDePostura detectorDePostura = new DetectorDePostura();
+		DetectorDePostura detectorDePostura = new DetectorDePostura(aula);
 
 		CvMemStorage mem = CvMemStorage.create();
 		OpenCVFrameConverter.ToIplImage conversor = new OpenCVFrameConverter.ToIplImage();
@@ -89,17 +92,8 @@ public class SupervisorDeTreino {
 			Scalar cor = Scalar.GREEN;
 			if (postura == Postura.INDEFINIDO) {
 				cor = Scalar.RED;
-				aula.addQtdIndefinido();
-				
-			}
-			if(postura == Postura.DIREITA ){
+			} else if(postura == Postura.DIREITA || postura == Postura.ESQUERDA){
 				cor = Scalar.YELLOW;
-				aula.addQtdDireita();
-			}
-			
-			if (postura == Postura.ESQUERDA){
-				cor = Scalar.YELLOW;
-				aula.addQtdEsquerda();
 			}
 			
 			putText(quadroFinal, postura.name(), new Point(10, 32),
@@ -135,6 +129,7 @@ public class SupervisorDeTreino {
 	public CanvasFrame criaJanela(String nome, double gamma, double escala) {
 		CanvasFrame janela = new CanvasFrame(nome, gamma);
 		janela.setCanvasScale(escala);
+		janela.addWindowListener(aula);
 		janela.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		return janela;
 	}
