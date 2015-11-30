@@ -5,6 +5,7 @@ import org.bytedeco.javacv.FrameGrabber;
 import org.bytedeco.javacv.FrameGrabber.Exception;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 import org.bytedeco.javacv.OpenCVFrameConverter.ToIplImage;
+import org.bytedeco.javacv.OpenCVFrameGrabber;
 
 public class WebCamFonte extends Fonte<IplImage> {
 
@@ -17,7 +18,7 @@ public class WebCamFonte extends Fonte<IplImage> {
 
 	public WebCamFonte() {
 		try {
-			webcam = FrameGrabber.createDefault(0);
+			webcam = OpenCVFrameGrabber.createDefault(0);
 			webcam.start();
 			conversor = new OpenCVFrameConverter.ToIplImage();
 			IplImage amostra = conversor.convert(webcam.grab());
