@@ -22,6 +22,7 @@ import org.bytedeco.javacpp.opencv_objdetect;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 
+import br.com.caelum.sat.filtro.EqualizeFiltro;
 import br.com.caelum.sat.filtro.ResizeFiltro;
 import br.com.caelum.sat.filtro.WebCamFonte;
 import br.com.caelum.sat.model.Aula;
@@ -71,6 +72,8 @@ public class SupervisorDeTreino {
 		while (!finished) {
 			detectorDePostura.reseta();
 			cvClearMemStorage(mem);
+			
+			EqualizeFiltro filtro = (EqualizeFiltro) detectorDePostura.get("Equalize");
 
 			ResizeFiltro filtroResize = (ResizeFiltro) detectorDePostura
 					.get("Resize");
@@ -100,7 +103,7 @@ public class SupervisorDeTreino {
 					FONT_HERSHEY_COMPLEX_SMALL, 1.5, cor, 2, LINE_AA, false);
 
 			janela.showImage(conversor.convert(quadroFinal));
-			janelaDebug.showImage(conversor.convert(quadroReduzido));
+			janelaDebug.showImage(conversor.convert(filtro.getOutput()));
 			tempoAnterior = tempoAtual; 
 		}
 
