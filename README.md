@@ -12,3 +12,4 @@ O SAT é um sistema que tem como objetivo auxiliar no treinamento de novos instr
 
 1. Clonar o repositório
 2. Abrir o projeto no Eclipse
+3. Executar pela classe `SupervisorDeTreino`
