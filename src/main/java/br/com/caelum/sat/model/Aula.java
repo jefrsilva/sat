@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import br.com.caelum.sat.processo.DetectorDePostura;
+
 public class Aula implements WindowListener {
 	
 	private List<Evento> eventos = new ArrayList<Evento>();

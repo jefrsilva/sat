@@ -1,11 +1,7 @@
 package br.com.caelum.sat;
 
-import static org.bytedeco.javacpp.helper.opencv_imgproc.*;
 import static org.bytedeco.javacpp.opencv_core.*;
 import static org.bytedeco.javacpp.opencv_imgproc.*;
-
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 
 import javax.swing.JFrame;
 
@@ -33,14 +29,8 @@ public class SupervisorDeTreino {
 
 	private static final double LARGURA_JANELA = 640.0;
 
-	private static final long THRESHOLD_COSTAS = 1500;
-	private static final long TEMPO_MAXIMO_COSTAS = 6000;
-
 	private CanvasFrame janela;
 	private CanvasFrame janelaDebug;
-
-	private long contadorDeCostas = 0;
-	private long tempoUltimoQuadro;
 
 	private Aula aula;
 
@@ -54,7 +44,7 @@ public class SupervisorDeTreino {
 		
 		this.aula = new Aula();
 		Loader.load(opencv_objdetect.class);
-
+		
 		DetectorDePostura detectorDePostura = new DetectorDePostura(aula);
 
 		CvMemStorage mem = CvMemStorage.create();

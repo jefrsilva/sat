@@ -24,11 +24,13 @@ import br.com.caelum.sat.filtro.MorphologyFiltro.Operacao;
 import br.com.caelum.sat.filtro.ResizeFiltro;
 import br.com.caelum.sat.filtro.WebCamFonte;
 import br.com.caelum.sat.model.Aula;
+import br.com.caelum.sat.model.Evento;
+import br.com.caelum.sat.model.EventoAlertaPosturaIncorreta;
 import br.com.caelum.sat.model.EventoTrocaDePostura;
 
 public class DetectorDePostura extends Processo {
 	private static final double LARGURA_QUADRO = 640.0;
-	private static final long TEMPO_MAX_INDEFINIDO = 5000;
+	public static final long TEMPO_MAX_INDEFINIDO = 5000;
 
 	private Postura postura = null;
 	private Postura posturaAnterior = Postura.FRENTE;
@@ -165,6 +167,9 @@ public class DetectorDePostura extends Processo {
 	}
 	
 	public void tocaAlarme() {
+		Evento evento = new EventoAlertaPosturaIncorreta();
+		aula.addEvento(evento);
+		
 		try {
 			URL url = this.getClass().getClassLoader()
 					.getResource("buzzer.wav");
