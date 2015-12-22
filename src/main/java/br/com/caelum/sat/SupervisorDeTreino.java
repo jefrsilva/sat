@@ -10,8 +10,8 @@ import static org.bytedeco.javacpp.opencv_imgproc.CV_AA;
 import static org.bytedeco.javacpp.opencv_imgproc.cvRectangle;
 import static org.bytedeco.javacpp.opencv_imgproc.putText;
 
-import javax.sound.sampled.LineUnavailableException;
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 
 import org.bytedeco.javacpp.Loader;
 import org.bytedeco.javacpp.opencv_core.CvMemStorage;
@@ -26,15 +26,12 @@ import org.bytedeco.javacpp.opencv_objdetect;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.OpenCVFrameConverter;
 
-import be.tarsos.dsp.AudioDispatcher;
-import be.tarsos.dsp.AudioEvent;
-import be.tarsos.dsp.AudioProcessor;
-import be.tarsos.dsp.io.jvm.AudioDispatcherFactory;
 import br.com.caelum.sat.filtro.EqualizeFiltro;
 import br.com.caelum.sat.filtro.ResizeFiltro;
 import br.com.caelum.sat.filtro.WebCamFonte;
 import br.com.caelum.sat.model.Aula;
 import br.com.caelum.sat.processo.DetectorDePostura;
+import br.com.caelum.sat.processo.DetectorDeSom;
 import br.com.caelum.sat.processo.Postura;
 
 public class SupervisorDeTreino {
@@ -47,114 +44,83 @@ public class SupervisorDeTreino {
 	private Aula aula;
 
 	public static void main(String[] args) {
-		new SupervisorDeTreino().inicia();
+		SwingUtilities.invokeLater(new Runnable() {
+			public void run() {
+				new SupervisorDeTreino().inicia();
+			}
+		});
 	}
 
 	public void inicia() {
-		long tempoAnterior = System.currentTimeMillis();
-		long tempoAtual;
 
 		this.aula = new Aula();
 		Loader.load(opencv_objdetect.class);
 
-		processaAudio();
+		final DetectorDePostura detectorDePostura = new DetectorDePostura(aula);
+		DetectorDeSom detectorDeSom = new DetectorDeSom(aula);
 
-		DetectorDePostura detectorDePostura = new DetectorDePostura(aula);
-
-		CvMemStorage mem = CvMemStorage.create();
-		OpenCVFrameConverter.ToIplImage conversor = new OpenCVFrameConverter.ToIplImage();
 
 		WebCamFonte webcam = (WebCamFonte) detectorDePostura.get("Webcam");
 		double gamma = CanvasFrame.getDefaultGamma() / webcam.getGamma();
-
+		
 		janela = criaJanela("Webcam", gamma, 1.0);
 		janelaDebug = criaJanela("Debug", 1.0, 1.0);
 		janelaDebug.setBounds((int) LARGURA_JANELA, 0, janela.getWidth(),
 				janela.getHeight());
 
-		boolean finished = false;
-		while (!finished) {
-			detectorDePostura.reseta();
-			cvClearMemStorage(mem);
+		//Refatorar o quanto antes!
+		new Thread(new Runnable() {
+			public void run() {
+				long tempoAnterior = System.currentTimeMillis();
+				long tempoAtual;
+				boolean finished = false;
+				CvMemStorage mem = CvMemStorage.create();
+				OpenCVFrameConverter.ToIplImage conversor = new OpenCVFrameConverter.ToIplImage();
+				while (!finished) {
+					detectorDePostura.reseta();
+					cvClearMemStorage(mem);
 
-			EqualizeFiltro filtro = (EqualizeFiltro) detectorDePostura
-					.get("Equalize");
+					EqualizeFiltro filtro = (EqualizeFiltro) detectorDePostura
+							.get("Equalize");
 
-			ResizeFiltro filtroResize = (ResizeFiltro) detectorDePostura
-					.get("Resize");
-			IplImage quadroReduzido = filtroResize.getOutput();
+					ResizeFiltro filtroResize = (ResizeFiltro) detectorDePostura
+							.get("Resize");
+					IplImage quadroReduzido = filtroResize.getOutput();
 
-			Postura postura = detectorDePostura.getPostura();
-			RectVector faces = detectorDePostura.getResultado();
-			desenhaRetangulos(quadroReduzido, faces, postura);
+					Postura postura = detectorDePostura.getPostura();
+					RectVector faces = detectorDePostura.getResultado();
+					desenhaRetangulos(quadroReduzido, faces, postura);
 
-			Mat quadroFinal = cvarrToMat(quadroReduzido);
-			putText(quadroFinal, postura.name(), new Point(10, 32),
-					FONT_HERSHEY_COMPLEX_SMALL, 1.5, Scalar.BLACK, 5, LINE_AA,
-					false);
+					Mat quadroFinal = cvarrToMat(quadroReduzido);
+					putText(quadroFinal, postura.name(), new Point(10, 32),
+							FONT_HERSHEY_COMPLEX_SMALL, 1.5, Scalar.BLACK, 5, LINE_AA,
+							false);
 
-			tempoAtual = System.currentTimeMillis();
-			long tempoCorrido = tempoAtual - tempoAnterior;
-			detectorDePostura.atualiza(tempoCorrido);
+					tempoAtual = System.currentTimeMillis();
+					long tempoCorrido = tempoAtual - tempoAnterior;
+					detectorDePostura.atualiza(tempoCorrido);
 
-			Scalar cor = Scalar.GREEN;
-			if (postura == Postura.INDEFINIDO) {
-				cor = Scalar.RED;
-			} else if (postura == Postura.DIREITA
-					|| postura == Postura.ESQUERDA) {
-				cor = Scalar.YELLOW;
+					Scalar cor = Scalar.GREEN;
+					if (postura == Postura.INDEFINIDO) {
+						cor = Scalar.RED;
+					} else if (postura == Postura.DIREITA
+							|| postura == Postura.ESQUERDA) {
+						cor = Scalar.YELLOW;
+					}
+
+					putText(quadroFinal, postura.name(), new Point(10, 32),
+							FONT_HERSHEY_COMPLEX_SMALL, 1.5, cor, 2, LINE_AA, false);
+
+					janela.showImage(conversor.convert(quadroFinal));
+					janelaDebug.showImage(conversor.convert(filtro.getOutput()));
+					tempoAnterior = tempoAtual;
+				}
+				janela.dispose();
+				janelaDebug.dispose();
+				detectorDePostura.finaliza();
 			}
+		}).start();
 
-			putText(quadroFinal, postura.name(), new Point(10, 32),
-					FONT_HERSHEY_COMPLEX_SMALL, 1.5, cor, 2, LINE_AA, false);
-
-			janela.showImage(conversor.convert(quadroFinal));
-			janelaDebug.showImage(conversor.convert(filtro.getOutput()));
-			tempoAnterior = tempoAtual;
-		}
-
-		janela.dispose();
-		janelaDebug.dispose();
-		detectorDePostura.finaliza();
-	}
-
-	private void processaAudio() {
-		try {
-			AudioDispatcher dispatcher = AudioDispatcherFactory.fromDefaultMicrophone(1024, 0);
-			dispatcher.addAudioProcessor(new AudioProcessor() {
-				float threshold = -50;// dB
-
-				/**
-				 * Returns the dBSPL for a buffer.
-				 */
-				private double soundPressureLevel(final float[] buffer) {
-					double power = 0.0D;
-					for (float element : buffer) {
-						power += element * element;
-					}
-					double value = Math.pow(power, 0.5) / buffer.length;
-					return 20.0 * Math.log10(value);
-				}
-
-				public boolean process(AudioEvent audioEvent) {
-					float[] buffer = audioEvent.getFloatBuffer();
-					double level = soundPressureLevel(buffer);
-					System.out.println("Level " + level);
-					if (level > threshold) {
-						System.out.println("Sound detected.");
-					}
-					return true;
-				}
-
-				public void processingFinished() {
-				}
-			});
-			new Thread(dispatcher).start();
-
-		} catch (LineUnavailableException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 
 	private void desenhaRetangulos(IplImage imagem, RectVector rects,
@@ -177,9 +143,10 @@ public class SupervisorDeTreino {
 
 	public CanvasFrame criaJanela(String nome, double gamma, double escala) {
 		CanvasFrame janela = new CanvasFrame(nome, gamma);
-		janela.setCanvasScale(escala);
-		janela.addWindowListener(aula);
 		janela.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		janela.addWindowListener(aula);
+		janela.setCanvasScale(escala);
+		janela.setVisible(true);
 		return janela;
 	}
 
